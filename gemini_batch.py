@@ -18,6 +18,7 @@ Options:
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -354,13 +355,24 @@ def _show_preview(rows: list[PromptRow], count: int, config: AppConfig) -> None:
 
 
 def _find_resume_output_manager(config: AppConfig) -> Optional[OutputManager]:
-    """Find the most recent output run directory and return an OutputManager for it."""
+    """Find the most recent valid output run directory and return an OutputManager for it.
+
+    A directory is considered a valid run if it matches the timestamp naming pattern
+    (YYYY-MM-DD_HHMMSS) and contains a manifest.csv file.
+    """
     base = Path(config.output_directory)
     if not base.exists():
         return None
 
+    timestamp_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}$")
     run_dirs = sorted(
-        [d for d in base.iterdir() if d.is_dir()],
+        [
+            d
+            for d in base.iterdir()
+            if d.is_dir()
+            and timestamp_pattern.match(d.name)
+            and (d / "manifest.csv").exists()
+        ],
         key=lambda d: d.name,
         reverse=True,
     )

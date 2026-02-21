@@ -314,7 +314,10 @@ def _resolve_filename(row: PromptRow, ext: str, images_dir: Path) -> str:
         Filename string (e.g., 'my_image.png').
     """
     if row.output_filename:
-        base = _slugify(row.output_filename)
+        # Strip any extension the user may have included (e.g. "foo.png" → "foo")
+        # so we don't produce double-extensions like "foo_png.png".
+        stem = Path(row.output_filename).stem
+        base = _slugify(stem)
     else:
         # Auto-generate from prompt (first 50 chars, slugified)
         base = _slugify(row.prompt[:50])

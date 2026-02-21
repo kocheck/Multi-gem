@@ -100,20 +100,40 @@ class ImageGenerator:
                 config=generation_config,
             )
 
-            # Extract image bytes from response parts
-            for part in response.candidates[0].content.parts:
-                if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+            # Extract image bytes from response parts — guard against empty
+            # candidates (e.g., blocked by safety filters) and missing content.
+            candidates = getattr(response, "candidates", None) or []
+            if not candidates:
+                prompt_feedback = getattr(response, "prompt_feedback", None)
+                block_reason = getattr(prompt_feedback, "block_reason", None)
+                detail = f" (block reason: {block_reason})" if block_reason else ""
+                return GenerationResult(
+                    row=row, error=f"No candidates in response{detail}."
+                )
+
+            candidate = candidates[0]
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+
+            for part in parts:
+                inline = getattr(part, "inline_data", None)
+                if inline and getattr(inline, "mime_type", "").startswith("image/"):
                     return GenerationResult(
                         row=row,
-                        image_data=part.inline_data.data,
-                        mime_type=part.inline_data.mime_type,
+                        image_data=inline.data,
+                        mime_type=inline.mime_type,
                     )
 
-            # No image returned — surface any text response for diagnosis
-            text_parts = [
-                p.text for p in response.candidates[0].content.parts if p.text
-            ]
+            # No image returned — collect any text parts and safety info for diagnosis
+            text_parts = [getattr(p, "text", None) for p in parts if getattr(p, "text", None)]
+            safety_ratings = getattr(candidate, "safety_ratings", None) or []
+            safety_detail = "; ".join(
+                f"{getattr(r, 'category', '?')}: {getattr(r, 'probability', '?')}"
+                for r in safety_ratings
+            )
             reason = "; ".join(text_parts) if text_parts else "No image in response."
+            if safety_detail:
+                reason += f" Safety ratings: [{safety_detail}]"
             return GenerationResult(row=row, error=f"No image returned: {reason}")
 
         return self.rate_limiter.call_with_retry(_call)

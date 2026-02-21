@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from core.config import AppConfig, VALID_ASPECT_RATIOS, VALID_MODELS, VALID_RESOLUTIONS
 
