@@ -6,7 +6,6 @@ import csv
 import datetime
 import html
 import io
-import json
 import logging
 from pathlib import Path
 from typing import Optional
@@ -68,11 +67,15 @@ class OutputManager:
 
     def _open_manifest(self) -> None:
         manifest_path = self.run_dir / MANIFEST_FILENAME
-        self._manifest_file = manifest_path.open("w", newline="", encoding="utf-8")
+        file_exists = manifest_path.exists()
+        self._manifest_file = manifest_path.open("a", newline="", encoding="utf-8")
         self._manifest_writer = csv.DictWriter(
             self._manifest_file, fieldnames=MANIFEST_FIELDNAMES
         )
-        self._manifest_writer.writeheader()
+        # Only write header for a new or empty manifest to avoid clobbering
+        # existing data when resuming or appending to a prior run.
+        if not file_exists or manifest_path.stat().st_size == 0:
+            self._manifest_writer.writeheader()
 
     def close(self) -> None:
         """Flush and close the manifest file."""
@@ -169,12 +172,20 @@ class OutputManager:
 
     def generate_gallery(self) -> None:
         """Write an HTML gallery page listing all generated images with their prompts."""
-        image_files = sorted(self.images_dir.glob("*.*"))
         thumb_rel = f"{THUMBNAILS_SUBDIR}/"
         img_rel = f"{IMAGES_SUBDIR}/"
 
-        success_rows = [r for r in self._manifest_rows if r["status"] == "success"]
-        error_rows = [r for r in self._manifest_rows if r["status"] == "error"]
+        # Read from the on-disk manifest so resumed runs include all prior entries.
+        manifest_path = self.run_dir / MANIFEST_FILENAME
+        if manifest_path.exists():
+            with manifest_path.open(newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                manifest_rows: list[dict[str, str]] = list(reader)
+        else:
+            manifest_rows = list(self._manifest_rows)
+
+        success_rows = [r for r in manifest_rows if r.get("status") == "success"]
+        error_rows = [r for r in manifest_rows if r.get("status") == "error"]
 
         cards_html = ""
         for entry in success_rows:
@@ -279,7 +290,7 @@ def _mime_to_ext(mime_type: str, preferred_format: str) -> str:
     """Return file extension for a MIME type, falling back to preferred_format."""
     mime_map = {
         "image/png": "png",
-        "image/jpeg": "jpg",
+        "image/jpeg": "jpeg",
         "image/webp": "webp",
         "image/gif": "gif",
     }

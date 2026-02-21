@@ -19,6 +19,7 @@ gemini_api_key: "YOUR_API_KEY_HERE"
 # Options:
 #   gemini-2.0-flash-preview-image-generation  — fast, cost-effective, 1024px max
 #   gemini-2.5-flash-preview-05-20             — higher quality, supports 2K/4K, up to 14 reference images
+#   gemini-3-pro-image-preview                 — highest quality, 4K, deep reasoning, up to 14 reference images
 default_model: "gemini-2.0-flash-preview-image-generation"
 
 # Default aspect ratio when 'aspect_ratio' CSV column is blank.
@@ -26,7 +27,7 @@ default_model: "gemini-2.0-flash-preview-image-generation"
 default_aspect_ratio: "1:1"
 
 # Default resolution when 'resolution' CSV column is blank.
-# Options: 1K, 2K, 4K  (2K/4K only supported by gemini-2.5-flash-preview-05-20)
+# Options: 1K, 2K, 4K  (2K/4K only supported by gemini-2.5-flash-preview-05-20 and gemini-3-pro-image-preview)
 default_resolution: "1K"
 
 # ── Output Settings ───────────────────────────────────────────────────────────

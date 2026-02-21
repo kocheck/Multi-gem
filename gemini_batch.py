@@ -37,7 +37,6 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from rich.table import Table
-from rich import print as rprint
 
 from core.config import AppConfig, load_config
 from core.csv_parser import ParsedCSV, PromptRow, parse_csv
@@ -164,7 +163,7 @@ def main(
     if parsed.errors:
         console.print(
             f"\n[bold yellow]⚠  {len(parsed.errors)} validation warning(s) found.[/bold yellow] "
-            "Rows with errors will be skipped."
+            "These rows have been skipped. Review the warnings above."
         )
 
     if not parsed.rows:
@@ -194,14 +193,19 @@ def main(
             console.print("[yellow]No previous run found. Starting fresh.[/yellow]")
             output_manager = OutputManager(config)
 
+    # Load completed entries BEFORE setup() opens the manifest for writing,
+    # so we can read the existing manifest in append/resume scenarios.
+    completed: set[str] = set()
+    if resume:
+        completed = output_manager.load_completed_filenames()
+
     output_manager.setup()
 
     # ── Determine which rows to process (skip completed if resuming) ──────────
     rows_to_process = parsed.rows
     if resume:
-        completed = output_manager.load_completed_filenames()
         if completed:
-            rows_to_process = _filter_resumed_rows(parsed.rows, completed, config)
+            rows_to_process = _filter_resumed_rows(parsed.rows, completed)
             skipped = len(parsed.rows) - len(rows_to_process)
             console.print(
                 f"[cyan]Resuming:[/cyan] {skipped} already-completed row(s) skipped, "
@@ -368,21 +372,17 @@ def _find_resume_output_manager(config: AppConfig) -> Optional[OutputManager]:
 
 
 def _filter_resumed_rows(
-    rows: list[PromptRow], completed_filenames: set[str], config: AppConfig
+    rows: list[PromptRow], completed_filenames: set[str]
 ) -> list[PromptRow]:
-    """Return only rows whose expected output filename is not in completed_filenames."""
-    from core.output import _resolve_filename
+    """Return only rows whose output_filename stem is not already in completed_filenames."""
+    # Compare by stem so we don't depend on the exact extension (which can
+    # vary based on the API response MIME type vs config.output_format).
+    completed_stems = {Path(name).stem for name in completed_filenames}
 
     remaining = []
     for row in rows:
-        ext = config.output_format
-        # We can't easily predict the exact filename without checking the disk,
-        # so we check by prompt — if any completed entry has a matching prompt we skip.
-        # A simpler heuristic: skip if output_filename (when provided) is in completed set.
-        if row.output_filename:
-            candidate = f"{row.output_filename}.{ext}"
-            if candidate in completed_filenames:
-                continue
+        if row.output_filename and row.output_filename in completed_stems:
+            continue
         remaining.append(row)
     return remaining
 

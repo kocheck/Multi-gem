@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 import mimetypes
 from pathlib import Path
@@ -16,15 +15,6 @@ from core.csv_parser import PromptRow, get_effective_reference_images
 from core.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
-
-# Pixel dimensions for each resolution tier (used for informational purposes;
-# actual enforcement is done by the model itself)
-RESOLUTION_PIXELS: dict[str, int] = {
-    "1K": 1024,
-    "2K": 2048,
-    "4K": 4096,
-}
-
 
 class GenerationResult:
     """Holds the outcome of a single image generation request."""

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -13,17 +13,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 VALID_MODELS = {
     "gemini-2.0-flash-preview-image-generation",
     "gemini-2.5-flash-preview-05-20",
+    "gemini-3-pro-image-preview",
 }
 
 VALID_ASPECT_RATIOS = {"1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2", "4:5", "5:4"}
 VALID_RESOLUTIONS = {"1K", "2K", "4K"}
 VALID_OUTPUT_FORMATS = {"png", "jpeg", "webp"}
-
-
-class ReferenceGroupsConfig(BaseModel):
-    """Maps group names to lists of reference image file paths."""
-
-    groups: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class AppConfig(BaseModel):
@@ -40,7 +35,6 @@ class AppConfig(BaseModel):
     generate_thumbnails: bool = Field(default=True)
     thumbnail_size: int = Field(default=256, ge=32)
     reference_groups: dict[str, list[str]] = Field(default_factory=dict)
-    concurrent_requests: int = Field(default=1, ge=1, le=10)
 
     @field_validator("default_model")
     @classmethod

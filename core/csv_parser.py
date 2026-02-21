@@ -123,8 +123,21 @@ def parse_csv(csv_path: Path, config: AppConfig) -> ParsedCSV:
         errors: list[str] = []
 
         for line_num, raw_row in enumerate(reader, start=2):  # start=2: header is line 1
-            # Normalize column names (strip whitespace, lowercase)
-            row = {k.strip().lower(): (v or "").strip() for k, v in raw_row.items()}
+            # Normalize column names (strip whitespace, lowercase).
+            # csv.DictReader uses key None for surplus columns; skip them.
+            row: dict[str, str] = {}
+            # csv.DictReader puts all values for columns beyond the header into
+            # a list stored under the key None — handle it explicitly before
+            # iterating so we don't try to call None.strip() below.
+            extra_values = raw_row.get(None)  # type: ignore[call-overload]
+            if extra_values:
+                errors.append(
+                    f"Row {line_num}: Extra columns detected with values {extra_values!r}."
+                )
+            for k, v in raw_row.items():
+                if k is None:
+                    continue
+                row[k.strip().lower()] = (v or "").strip()
 
             # Apply config defaults for optional fields
             row.setdefault("aspect_ratio", config.default_aspect_ratio)
@@ -144,26 +157,29 @@ def parse_csv(csv_path: Path, config: AppConfig) -> ParsedCSV:
                 errors.append(f"Row {line_num}: Validation error — {exc}")
                 continue
 
-            # Validate per-prompt reference image paths
+            # Validate per-prompt reference image paths; skip row on any error
             ref_path_errors = _validate_ref_paths(
                 prompt_row.reference_images, line_num, label="reference_images"
             )
-            errors.extend(ref_path_errors)
+            if ref_path_errors:
+                errors.extend(ref_path_errors)
+                continue
 
-            # Resolve and validate group reference image paths
-            group_refs: list[str] = []
+            # Resolve and validate group reference image paths; skip row on any error
             if prompt_row.group:
-                group_refs = config.reference_groups.get(prompt_row.group, [])
                 if prompt_row.group not in config.reference_groups:
                     errors.append(
                         f"Row {line_num}: Unknown group '{prompt_row.group}'. "
                         "Add it to reference_groups in config.yaml."
                     )
-                else:
-                    group_path_errors = _validate_ref_paths(
-                        group_refs, line_num, label=f"group '{prompt_row.group}'"
-                    )
+                    continue
+                group_refs = config.reference_groups[prompt_row.group]
+                group_path_errors = _validate_ref_paths(
+                    group_refs, line_num, label=f"group '{prompt_row.group}'"
+                )
+                if group_path_errors:
                     errors.extend(group_path_errors)
+                    continue
 
             rows.append(prompt_row)
 

@@ -12,6 +12,7 @@ A production-ready Python CLI tool that reads a CSV file of image prompts and ge
 - **Two Gemini models** supported:
   - `gemini-2.0-flash-preview-image-generation` — fast, cost-effective, great for high volume
   - `gemini-2.5-flash-preview-05-20` — higher quality, supports 2K/4K resolution, up to 14 reference images
+  - `gemini-3-pro-image-preview` — highest quality, 4K resolution, deep reasoning, up to 14 reference images
 - **Reference images** — attach per-prompt reference images via CSV, or define named groups in config
 - **Real-time progress** with Rich progress bars, ETA, and per-row status
 - **Resilient batch processing** — one failed prompt never kills the batch
@@ -83,7 +84,7 @@ Use `batch_prompts_sample.csv` as a starting point. The only required column is 
 | `prompt` | ✅ Yes | — | The image generation prompt |
 | `aspect_ratio` | No | `1:1` | One of: `1:1`, `3:4`, `4:3`, `9:16`, `16:9`, `2:3`, `3:2`, `4:5`, `5:4` |
 | `resolution` | No | `1K` | `1K`, `2K`, or `4K` (2K/4K only for `gemini-2.5-flash-preview-05-20`) |
-| `model` | No | from config | Which Gemini model to use |
+| `model` | No | from config | `gemini-2.0-flash-preview-image-generation`, `gemini-2.5-flash-preview-05-20`, or `gemini-3-pro-image-preview` |
 | `group` | No | — | Named reference group from `config.yaml` |
 | `reference_images` | No | — | Semicolon-separated paths to local reference images |
 | `output_filename` | No | auto-generated | Custom filename (no extension needed) |
@@ -221,6 +222,10 @@ gemini_api_key: "YOUR_API_KEY_HERE"
 
 # Model defaults
 default_model: "gemini-2.0-flash-preview-image-generation"
+# Options:
+#   gemini-2.0-flash-preview-image-generation  — fast, cost-effective
+#   gemini-2.5-flash-preview-05-20             — higher quality, 2K/4K
+#   gemini-3-pro-image-preview                 — highest quality, 4K, reasoning
 default_aspect_ratio: "1:1"
 default_resolution: "1K"
 
@@ -266,7 +271,7 @@ The tool automatically retries on `429 Too Many Requests` with exponential backo
 → The prompt may have been blocked by safety filters. Check the manifest.csv `error` column for details. Try rephrasing the prompt.
 
 **Thumbnails not generated**
-→ Install Pillow: `pip install Pillow`
+→ Ensure all dependencies are installed: `pip install -r requirements.txt`
 
 **Rate limit errors (429)**
 → Increase `delay_between_requests` in config.yaml. The free tier allows ~10 RPM.
