@@ -93,22 +93,29 @@ class OutputManager:
         """
         Save image bytes to the images directory.
 
+        Converts to `config.output_format` via Pillow when possible.
+        Falls back to saving the original bytes if Pillow is unavailable.
+
         Args:
             row: The PromptRow that generated this image.
             image_data: Raw image bytes.
-            mime_type: MIME type of the image (used to determine extension).
+            mime_type: MIME type of the image returned by the API.
 
         Returns:
             The filename (not full path) that was saved.
         """
-        ext = _mime_to_ext(mime_type, self.config.output_format)
+        output_format = self.config.output_format.lower()
+        image_bytes_to_save, effective_mime = _convert_image(
+            image_data, mime_type, output_format, jpeg_quality=self.config.jpeg_quality
+        )
+        ext = _mime_to_ext(effective_mime, output_format)
         filename = _resolve_filename(row, ext, self.images_dir)
         out_path = self.images_dir / filename
-        out_path.write_bytes(image_data)
+        out_path.write_bytes(image_bytes_to_save)
         logger.debug("Saved image: %s", out_path)
 
         if self.config.generate_thumbnails:
-            self._save_thumbnail(image_data, filename, mime_type)
+            self._save_thumbnail(image_bytes_to_save, filename, effective_mime)
 
         return filename
 
@@ -251,26 +258,33 @@ class OutputManager:
         gallery_path.write_text(html_content, encoding="utf-8")
         logger.info("Gallery written: %s", gallery_path)
 
-    def load_completed_filenames(self) -> set[str]:
+    def load_completed(self) -> tuple[set[str], set[int]]:
         """
-        Load successfully completed output filenames from an existing manifest.
+        Load successfully completed output filenames and row indices from an existing manifest.
 
         Used by --resume to skip already-completed prompts.
 
         Returns:
-            Set of output_filename values with status == 'success'.
+            Tuple of (set of output_filename values, set of row_index integers)
+            for all rows with status == 'success'.
         """
         manifest_path = self.run_dir / MANIFEST_FILENAME
         if not manifest_path.exists():
-            return set()
+            return set(), set()
 
-        completed: set[str] = set()
+        completed_filenames: set[str] = set()
+        completed_row_indices: set[int] = set()
         with manifest_path.open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row.get("status") == "success" and row.get("output_filename"):
-                    completed.add(row["output_filename"])
-        return completed
+                if row.get("status") == "success":
+                    if row.get("output_filename"):
+                        completed_filenames.add(row["output_filename"])
+                    try:
+                        completed_row_indices.add(int(row["row_index"]))
+                    except (ValueError, KeyError):
+                        pass
+        return completed_filenames, completed_row_indices
 
     @property
     def manifest_path(self) -> Path:
@@ -284,6 +298,69 @@ class OutputManager:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _convert_image(
+    image_data: bytes, source_mime: str, target_format: str, jpeg_quality: int = 95
+) -> tuple[bytes, str]:
+    """
+    Convert image bytes to the target format using Pillow.
+
+    If Pillow is unavailable or conversion fails, the original bytes and MIME
+    type are returned unchanged.
+
+    Args:
+        image_data: Raw image bytes from the API.
+        source_mime: MIME type reported by the API (e.g. 'image/png').
+        target_format: Desired output format (e.g. 'png', 'jpeg', 'webp').
+        jpeg_quality: JPEG compression quality (1–100). Only used when target_format is 'jpeg'.
+
+    Returns:
+        Tuple of (bytes, mime_type) for the (possibly converted) image.
+    """
+    pil_format_map = {"png": "PNG", "jpeg": "JPEG", "webp": "WEBP"}
+    target_format = target_format.lower()
+    pil_format = pil_format_map.get(target_format)
+
+    source_ext = _mime_to_ext(source_mime, target_format)
+    if source_ext == target_format:
+        # Already the right format — skip conversion.
+        return image_data, source_mime
+
+    if pil_format is None:
+        logger.warning("Unknown output_format '%s' — saving original bytes.", target_format)
+        return image_data, source_mime
+
+    try:
+        from PIL import Image  # type: ignore
+
+        with Image.open(io.BytesIO(image_data)) as img:
+            buf = io.BytesIO()
+            save_kwargs: dict = {}
+            if pil_format == "JPEG":
+                # JPEG doesn't support transparency; convert to RGB first.
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                save_kwargs["quality"] = jpeg_quality
+            img.save(buf, format=pil_format, **save_kwargs)
+            converted = buf.getvalue()
+
+        target_mime = f"image/{target_format}"
+        logger.debug("Converted image from %s to %s", source_mime, target_mime)
+        return converted, target_mime
+    except ImportError:
+        logger.warning(
+            "Pillow not installed — cannot convert to '%s'. Saving original bytes.",
+            target_format,
+        )
+        return image_data, source_mime
+    except Exception as exc:
+        logger.warning(
+            "Image conversion to '%s' failed: %s. Saving original bytes.",
+            target_format,
+            exc,
+        )
+        return image_data, source_mime
 
 
 def _mime_to_ext(mime_type: str, preferred_format: str) -> str:

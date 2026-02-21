@@ -41,6 +41,9 @@ output_format: "png"
 generate_thumbnails: true
 thumbnail_size: 256
 
+# JPEG compression quality (1–100). Only applies when output_format is 'jpeg'.
+jpeg_quality: 95
+
 # ── Rate Limiting ─────────────────────────────────────────────────────────────
 # Minimum seconds to wait between API requests.
 # Free tier: ~10 RPM for image models → set this to 6+ seconds.

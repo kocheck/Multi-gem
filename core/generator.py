@@ -151,8 +151,10 @@ def _build_prompt(row: PromptRow) -> str:
     if row.style_instructions:
         parts.append(row.style_instructions.strip())
 
-    # Embed aspect ratio in the prompt as a soft hint for models that support it
+    # Embed aspect ratio and target resolution in the prompt as soft hints.
+    # Both are passed as natural language; the model interprets them as guidance.
     parts.append(f"Aspect ratio: {row.aspect_ratio}.")
+    parts.append(f"Target resolution: {row.resolution}.")
 
     if row.negative_prompt:
         parts.append(f"Avoid: {row.negative_prompt.strip()}.")

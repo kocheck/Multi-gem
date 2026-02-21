@@ -196,17 +196,18 @@ def main(
 
     # Load completed entries BEFORE setup() opens the manifest for writing,
     # so we can read the existing manifest in append/resume scenarios.
-    completed: set[str] = set()
+    completed_fnames: set[str] = set()
+    completed_indices: set[int] = set()
     if resume:
-        completed = output_manager.load_completed_filenames()
+        completed_fnames, completed_indices = output_manager.load_completed()
 
     output_manager.setup()
 
     # ── Determine which rows to process (skip completed if resuming) ──────────
     rows_to_process = parsed.rows
     if resume:
-        if completed:
-            rows_to_process = _filter_resumed_rows(parsed.rows, completed)
+        if completed_fnames or completed_indices:
+            rows_to_process = _filter_resumed_rows(parsed.rows, completed_fnames, completed_indices)
             skipped = len(parsed.rows) - len(rows_to_process)
             console.print(
                 f"[cyan]Resuming:[/cyan] {skipped} already-completed row(s) skipped, "
@@ -328,6 +329,8 @@ def _report_validation(parsed: ParsedCSV, csv_path: Path) -> None:
 
 def _show_preview(rows: list[PromptRow], count: int, config: AppConfig) -> None:
     """Print a Rich table preview of the first N rows."""
+    from core.csv_parser import get_effective_reference_images
+
     preview_rows = rows[:count]
     table = Table(title=f"Preview — first {len(preview_rows)} row(s)", show_lines=True)
     table.add_column("#", style="dim", width=4)
@@ -339,7 +342,6 @@ def _show_preview(rows: list[PromptRow], count: int, config: AppConfig) -> None:
     table.add_column("Ref imgs", style="green")
 
     for row in preview_rows:
-        from core.csv_parser import get_effective_reference_images
         refs = get_effective_reference_images(row, config)
         table.add_row(
             str(row.row_index),
@@ -384,16 +386,25 @@ def _find_resume_output_manager(config: AppConfig) -> Optional[OutputManager]:
 
 
 def _filter_resumed_rows(
-    rows: list[PromptRow], completed_filenames: set[str]
+    rows: list[PromptRow],
+    completed_filenames: set[str],
+    completed_row_indices: set[int],
 ) -> list[PromptRow]:
-    """Return only rows whose output_filename stem is not already in completed_filenames."""
-    # Compare by stem so we don't depend on the exact extension (which can
-    # vary based on the API response MIME type vs config.output_format).
+    """Return only rows not already recorded as completed in the manifest.
+
+    Completion is detected by:
+    - row_index match (covers rows with and without an explicit output_filename), OR
+    - output_filename stem match (extension-agnostic, handles user-supplied extensions).
+    """
     completed_stems = {Path(name).stem for name in completed_filenames}
 
     remaining = []
     for row in rows:
-        if row.output_filename and row.output_filename in completed_stems:
+        # Primary: skip by row_index (works for all rows)
+        if row.row_index in completed_row_indices:
+            continue
+        # Secondary: skip by filename stem for rows that set output_filename
+        if row.output_filename and Path(row.output_filename).stem in completed_stems:
             continue
         remaining.append(row)
     return remaining

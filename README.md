@@ -83,7 +83,7 @@ Use `batch_prompts_sample.csv` as a starting point. The only required column is 
 |---|---|---|---|
 | `prompt` | ✅ Yes | — | The image generation prompt |
 | `aspect_ratio` | No | `1:1` | One of: `1:1`, `3:4`, `4:3`, `9:16`, `16:9`, `2:3`, `3:2`, `4:5`, `5:4` |
-| `resolution` | No | `1K` | `1K`, `2K`, or `4K` (2K/4K only for `gemini-2.5-flash-preview-05-20`) |
+| `resolution` | No | `1K` | `1K`, `2K`, or `4K` (2K/4K only for `gemini-2.5-flash-preview-05-20` and `gemini-3-pro-image-preview`) |
 | `model` | No | from config | `gemini-2.0-flash-preview-image-generation`, `gemini-2.5-flash-preview-05-20`, or `gemini-3-pro-image-preview` |
 | `group` | No | — | Named reference group from `config.yaml` |
 | `reference_images` | No | — | Semicolon-separated paths to local reference images |

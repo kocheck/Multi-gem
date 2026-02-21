@@ -34,6 +34,7 @@ class AppConfig(BaseModel):
     max_retries: int = Field(default=3, ge=0)
     generate_thumbnails: bool = Field(default=True)
     thumbnail_size: int = Field(default=256, ge=32)
+    jpeg_quality: int = Field(default=95, ge=1, le=100)
     reference_groups: dict[str, list[str]] = Field(default_factory=dict)
 
     @field_validator("default_model")
