@@ -1,0 +1,66 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# config.yaml — Gemini Batch Image Generator Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# SETUP: Copy this file to config.yaml and fill in your API key.
+#   cp config.yaml.example config.yaml
+#
+# API KEY: Either set it here OR export GEMINI_API_KEY=your_key_here in your shell.
+#          The environment variable always takes precedence.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Your Google Gemini API key.
+# Get one at https://aistudio.google.com/app/apikey
+# NEVER commit this file to version control with a real key.
+gemini_api_key: "YOUR_API_KEY_HERE"
+
+# ── Model Defaults ────────────────────────────────────────────────────────────
+# Default model to use when the 'model' column in your CSV is blank.
+# Options:
+#   gemini-2.0-flash-preview-image-generation  — fast, cost-effective, 1024px max
+#   gemini-2.5-flash-preview-05-20             — higher quality, supports 2K/4K, up to 14 reference images
+#   gemini-3-pro-image-preview                 — highest quality, 4K, deep reasoning, up to 14 reference images
+default_model: "gemini-2.0-flash-preview-image-generation"
+
+# Default aspect ratio when 'aspect_ratio' CSV column is blank.
+# Options: 1:1, 3:4, 4:3, 9:16, 16:9, 2:3, 3:2, 4:5, 5:4
+default_aspect_ratio: "1:1"
+
+# Default resolution when 'resolution' CSV column is blank.
+# Options: 1K, 2K, 4K  (2K/4K only supported by gemini-2.5-flash-preview-05-20 and gemini-3-pro-image-preview)
+default_resolution: "1K"
+
+# ── Output Settings ───────────────────────────────────────────────────────────
+# Base output directory. A timestamped subfolder is created for each batch run.
+output_directory: "./output"
+
+# Image format for saved files. Options: png, jpeg, webp
+output_format: "png"
+
+# Generate 256px thumbnails alongside full-size images (requires Pillow).
+generate_thumbnails: true
+thumbnail_size: 256
+
+# JPEG compression quality (1–100). Only applies when output_format is 'jpeg'.
+jpeg_quality: 95
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+# Minimum seconds to wait between API requests.
+# Free tier: ~10 RPM for image models → set this to 6+ seconds.
+# Paid tier: higher limits → you can lower this.
+delay_between_requests: 6
+
+# Maximum number of retry attempts per request (with exponential backoff).
+max_retries: 3
+
+# ── Reference Groups ──────────────────────────────────────────────────────────
+# Named groups of reference images shared across multiple CSV rows.
+# Use the 'group' column in your CSV to assign a row to a group.
+# Paths can be relative to the directory you run the script from.
+reference_groups:
+  brand_style:
+    - "./references/brand_color_palette.png"
+    - "./references/brand_style_guide.png"
+  # character_anna:
+  #   - "./references/anna_face_ref.jpg"
+  #   - "./references/anna_fullbody_ref.jpg"
