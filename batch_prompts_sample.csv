@@ -1,0 +1,6 @@
+prompt,aspect_ratio,resolution,model,group,reference_images,output_filename,style_instructions,negative_prompt
+"A serene Japanese garden at sunset with a koi pond",16:9,1K,gemini-2.0-flash-preview-image-generation,,,japanese_garden,"photorealistic, warm golden hour lighting",
+"Modern minimalist logo for a coffee shop called 'Bean Theory'",1:1,1K,gemini-2.0-flash-preview-image-generation,,,bean_theory_logo,"clean flat style, bold typography",text or complex graphics
+"A cozy home office setup with warm lighting and plants",4:3,1K,gemini-2.0-flash-preview-image-generation,,,home_office,"interior design photography, soft natural light",
+"Abstract geometric pattern with purple and teal gradients",1:1,1K,gemini-2.0-flash-preview-image-generation,,,abstract_pattern,"digital art, high contrast, sharp edges",
+"Watercolor illustration of a cat reading a book by a fireplace",3:4,1K,gemini-2.0-flash-preview-image-generation,,,cat_reading,"loose watercolor style, warm palette, whimsical",
