@@ -84,6 +84,12 @@ class OutputManager:
             self._manifest_file.close()
             self._manifest_file = None
 
+    def __enter__(self) -> "OutputManager":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
     def save_image(
         self,
         row: PromptRow,
@@ -131,7 +137,11 @@ class OutputManager:
 
             with Image.open(io.BytesIO(image_data)) as img:
                 img.thumbnail((self.config.thumbnail_size, self.config.thumbnail_size))
-                img.save(thumb_path)
+                save_kwargs: dict = {}
+                # Match JPEG quality to config so thumbnails are consistent with full images.
+                if mime_type.lower() == "image/jpeg" or Path(filename).suffix.lower() in {".jpg", ".jpeg"}:
+                    save_kwargs["quality"] = self.config.jpeg_quality
+                img.save(thumb_path, **save_kwargs)
 
             logger.debug("Saved thumbnail: %s", thumb_path)
         except ImportError:

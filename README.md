@@ -9,7 +9,7 @@ A production-ready Python CLI tool that reads a CSV file of image prompts and ge
 ## Features
 
 - **Batch processing** from a simple CSV file
-- **Two Gemini models** supported:
+- **Three Gemini models** supported:
   - `gemini-2.0-flash-preview-image-generation` — fast, cost-effective, great for high volume
   - `gemini-2.5-flash-preview-05-20` — higher quality, supports 2K/4K resolution, up to 14 reference images
   - `gemini-3-pro-image-preview` — highest quality, 4K resolution, deep reasoning, up to 14 reference images

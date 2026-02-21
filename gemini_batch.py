@@ -222,13 +222,16 @@ def main(
 
     # ── Run the batch ─────────────────────────────────────────────────────────
     generator = ImageGenerator(config)
-    success_count, error_count = _run_batch(
-        rows=rows_to_process,
-        generator=generator,
-        output_manager=output_manager,
-    )
+    try:
+        success_count, error_count = _run_batch(
+            rows=rows_to_process,
+            generator=generator,
+            output_manager=output_manager,
+        )
+    finally:
+        # Always close the manifest file even if an unexpected exception occurs.
+        output_manager.close()
 
-    output_manager.close()
     output_manager.generate_gallery()
 
     # ── Final summary ─────────────────────────────────────────────────────────
